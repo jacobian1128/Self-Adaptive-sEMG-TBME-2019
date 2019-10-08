@@ -1,10 +1,10 @@
 # Self-Adaptive-sEMG-TBME-2019
 
 
-### publication
-Seongsik Park, Wan Kyun Chung and Keehoon Kim, "Training-free Bayesian self-adaptive classification for sEMG pattern recognition including motion transition," IEEE Transactions on Biomedical Engineering (accepted)
+## publication
+Seongsik Park, Wan Kyun Chung and Keehoon Kim, "Training-free Bayesian self-adaptive classification for sEMG pattern recognition including motion transition," *IEEE Transactions on Biomedical Engineering* (accepted)
 
-### dependency
+## dependency
 
 * [Eigen](http://eigen.tuxfamily.org)
 * [myo windows sdk](https://support.getmyo.com/hc/en-us/articles/360018409792-Myo-Connect-SDK-and-firmware-downloads)
