@@ -7,4 +7,4 @@ Seongsik Park, Wan Kyun Chung and Keehoon Kim, "Training-free Bayesian self-adap
 ## dependency
 
 * [Eigen](http://eigen.tuxfamily.org)
-* [myo windows sdk](https://support.getmyo.com/hc/en-us/articles/360018409792-Myo-Connect-SDK-and-firmware-downloads)
+* [Myo Windows SDK](https://support.getmyo.com/hc/en-us/articles/360018409792-Myo-Connect-SDK-and-firmware-downloads)
