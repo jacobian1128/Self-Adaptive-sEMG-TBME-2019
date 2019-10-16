@@ -3,7 +3,7 @@
 This is a C++ example for a single Myo armband implementing the publication below.
 
 ## Publication
-Seongsik Park, Wan Kyun Chung and Keehoon Kim, "Training-free Bayesian self-adaptive classification for sEMG pattern recognition including motion transition," *IEEE Transactions on Biomedical Engineering* (accepted)
+Seongsik Park, Wan Kyun Chung and Keehoon Kim, "Training-free Bayesian self-adaptive classification for sEMG pattern recognition including motion transition," *IEEE Transactions on Biomedical Engineering*.
 
 ## Dependency
 
