@@ -6,21 +6,7 @@
 #include "TFcore.h"
 
 TFcore::TFcore() {
-	// initialize model parameters = ¼Õ ´îÀÏ ÀÖ´Â °÷
-	//xmax = 80;
-
-	//mu_init = 1.00e-2*MatrixXd::Ones(1, NUM_CH);
-	//sig2_init = 1.00e-3*MatrixXd::Ones(1, NUM_CH);
-
-	//sig2_reg = 1.00e-3*MatrixXd::Ones(1, NUM_CH);
-	//sig2_update = 1.00e+1*MatrixXd::Ones(1, NUM_CH);
-
-	//alpha = 1.00e-5;
-	//beta = 1.00e-10;
-
-	//pstar = 1e-18;
-
-	//regHold = 8;
+	// initialize model parameters
 	xmax = 80;
 
 	mu_init = 1.00e-2*MatrixXd::Ones(1, NUM_CH);
@@ -38,7 +24,7 @@ TFcore::TFcore() {
 	regHold = 128;
 	outputFile.open("data.txt");
 	
-	// initialize matrices = ¼Õ ´îÀÏ ¾ø´Â °÷
+	// initialize matrices (do not modify)
 	bCollect = false;
 	bCompute = false;
 	bInitDiaplay = false;
@@ -107,12 +93,12 @@ void TFcore::proceed() {
 
 		pmax = -1;
 		mpred = 0;
-		// ¸ðµç ÆÐÅÏµé¿¡ ´ëÇØ Æò°¡ÇÔ
+		// evaluate for all distributions
 		for (int m = 0; m < M; m++) {
 			pdist_post[m] = pdist_prior[m].array() * pdist_lik.array();
 			pdist_post[m] = normalizeProb(pdist_post[m]);
 
-			// °¢ ÆÐÅÏº° likelihood probability¸¦ °è»êÇÔ
+			// ê° íŒ¨í„´ë³„ likelihood probabilityë¥¼ ê³„ì‚°í•¨
 			plik[m] = 1;
 			for (int n = 0; n < NUM_CH; n++) {
 				plik[m] *= pdist_post[m](idnew[n], n);
@@ -125,7 +111,7 @@ void TFcore::proceed() {
 			}
 		}
 
-		// »õ ÆÐÅÏ µî·ÏÇÏ±â
+		// register a new pattern
 		if ((pmax < pstar) && (regLast > regHold)) {
 			pdist_prior[M] = computeNormal(xnew, sig2_reg);
 			pdist_post[M] = pdist_prior[M];
