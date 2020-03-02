@@ -9,5 +9,5 @@ Seongsik Park, Wan Kyun Chung and Keehoon Kim, "Training-free Bayesian self-adap
 
 * [Eigen](http://eigen.tuxfamily.org)
 
-# Thalmic MYO armband
+### Thalmic MYO armband
 * [Myo Windows SDK](https://support.getmyo.com/hc/en-us/articles/360018409792-Myo-Connect-SDK-and-firmware-downloads)
