@@ -51,8 +51,8 @@ private:
 	ofstream outputFile;
 
 private:
-	int M; // ÇöÀç ½ÃÁ¡¿¡¼­ ÀüÃ¼ ÆĞÅÏÀÇ °¹¼ö
-	int mpred; // classifyµÈ ÇöÀç ÆĞÅÏÀÇ ÀÎµ¦½º
+	int M; // í˜„ì¬ ì‹œì ì—ì„œ ì „ì²´ íŒ¨í„´ì˜ ê°¯ìˆ˜
+	int mpred; // classifyëœ í˜„ì¬ íŒ¨í„´ì˜ ì¸ë±ìŠ¤
 
 	int idnew[NUM_CH];
 	double pmax;
@@ -68,20 +68,20 @@ private:
 	double plik[M_MAX];
 
 private:
-	double xmax; // ÇÊÅÍ¸µµÈ sEMG ½ÅÈ£ÀÇ ÃÖ´ñ°ªÀ» ¼³Á¤
+	double xmax; // í•„í„°ë§ëœ sEMG ì‹ í˜¸ì˜ ìµœëŒ“ê°’ì„ ì„¤ì •
 
-	MatrixXd mu_init; // Ã¹¹øÂ° ÆĞÅÏÀÇ Æò±Õ = ÁÖ·Î baseline noise amplitude
-	MatrixXd sig2_init; // Ã¹¹øÂ° ÆĞÅÏÀÇ ºĞ»ê = ÁÖ·Î baseline noise variance
+	MatrixXd mu_init; // ì²«ë²ˆì§¸ íŒ¨í„´ì˜ í‰ê·  = ì£¼ë¡œ baseline noise amplitude
+	MatrixXd sig2_init; // ì²«ë²ˆì§¸ íŒ¨í„´ì˜ ë¶„ì‚° = ì£¼ë¡œ baseline noise variance
 
-	MatrixXd sig2_reg; // »õ·Î¿î ÆĞÅÏÀ» µî·ÏÇÒ ¶§ÀÇ ºĞ»ê, ³·À»¼ö·Ï Á¼Àº ºĞÆ÷
-	MatrixXd sig2_update; // °»½ÅÇÒ ¶§ÀÇ ºĞ»ê, ³·À»¼ö·Ï °­ÇÏ°Ô ¹İ¿µ
+	MatrixXd sig2_reg; // ìƒˆë¡œìš´ íŒ¨í„´ì„ ë“±ë¡í•  ë•Œì˜ ë¶„ì‚°, ë‚®ì„ìˆ˜ë¡ ì¢ì€ ë¶„í¬
+	MatrixXd sig2_update; // ê°±ì‹ í•  ë•Œì˜ ë¶„ì‚°, ë‚®ì„ìˆ˜ë¡ ê°•í•˜ê²Œ ë°˜ì˜
 
-	double alpha; // È®»êÀÇ Á¤µµ, Å¬¼ö·Ï °­ÇÑ È®»ê = ºĞÆ÷°¡ ³Ğ°Ô ÆÛÁü
-	double beta; // Áö±İÀº ¾È¾²´Â ÆÄ¶ó¹ÌÅÍ
+	double alpha; // í™•ì‚°ì˜ ì •ë„, í´ìˆ˜ë¡ ê°•í•œ í™•ì‚° = ë¶„í¬ê°€ ë„“ê²Œ í¼ì§
+	double beta; // ì§€ê¸ˆì€ ì•ˆì“°ëŠ” íŒŒë¼ë¯¸í„°
 
-	double pstar; // threshold probability, »õ ÆĞÅÏ µî·ÏÀÇ ¹Î°¨µµ
+	double pstar; // threshold probability, ìƒˆ íŒ¨í„´ ë“±ë¡ì˜ ë¯¼ê°ë„
 
-	int regHold; // µî·Ï ÀÌÈÄ¿¡ ¸î¹øÀÇ »ùÇÃ¸µ µ¿¾È »õ µî·ÏÀ» ±İÁöÇÒÁö
+	int regHold; // ë“±ë¡ ì´í›„ì— ëª‡ë²ˆì˜ ìƒ˜í”Œë§ ë™ì•ˆ ìƒˆ ë“±ë¡ì„ ê¸ˆì§€í• ì§€
 
 private:
 	MatrixXd computeNormal(double mu, double sig2);
@@ -135,7 +135,7 @@ public:
 
 
 TFcore::TFcore() {
-	// initialize model parameters = ¼Õ ´îÀÏ ÀÖ´Â °÷
+	// initialize model parameters = ì† ëŒˆì¼ ìˆëŠ” ê³³
 	xmax = 1.00;
 
 	mu_init = 1.00e-2 * MatrixXd::Ones(1, NUM_CH);
@@ -153,7 +153,7 @@ TFcore::TFcore() {
 	regHold = 128;
 	outputFile.open("data.txt");
 
-	// initialize matrices = ¼Õ ´îÀÏ ¾ø´Â °÷
+	// initialize matrices = ì† ëŒˆì¼ ì—†ëŠ” ê³³
 	bCollect = false;
 	bCompute = false;
 	bInitDiaplay = false;
@@ -209,7 +209,7 @@ void TFcore::proceed() {
 
 		xnew = (1 / xmax) * emgMAV;
 		for (int n = 0; n < NUM_CH; n++) {
-			xnew(0, n) = min(1, xnew(0, n));
+			xnew(0, n) = min((double) 1, xnew(0, n));
 			idnew[n] = floor(xnew(0, n) * (double)(XRES));
 			if (idnew[n] > (XRES - 1)) idnew[n] = XRES - 1;
 
@@ -222,12 +222,12 @@ void TFcore::proceed() {
 
 		pmax = -1;
 		mpred = 0;
-		// ¸ğµç ÆĞÅÏµé¿¡ ´ëÇØ Æò°¡ÇÔ
+		// ëª¨ë“  íŒ¨í„´ë“¤ì— ëŒ€í•´ í‰ê°€í•¨
 		for (int m = 0; m < M; m++) {
 			pdist_post[m] = pdist_prior[m].array() * pdist_lik.array();
 			pdist_post[m] = normalizeProb(pdist_post[m]);
 
-			// °¢ ÆĞÅÏº° likelihood probability¸¦ °è»êÇÔ
+			// ê° íŒ¨í„´ë³„ likelihood probabilityë¥¼ ê³„ì‚°í•¨
 			plik[m] = 1;
 			for (int n = 0; n < NUM_CH; n++) {
 				plik[m] *= pdist_post[m](idnew[n], n);
@@ -240,7 +240,7 @@ void TFcore::proceed() {
 			}
 		}
 
-		// »õ ÆĞÅÏ µî·ÏÇÏ±â
+		// ìƒˆ íŒ¨í„´ ë“±ë¡í•˜ê¸°
 		if ((pmax < pstar) && (regLast > regHold)) {
 			pdist_prior[M] = computeNormal(xnew, sig2_reg);
 			pdist_post[M] = pdist_prior[M];
