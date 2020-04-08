@@ -3,7 +3,7 @@
 These are C++ examples implementing the publication below.
 
 ## Publication
-Seongsik Park, Wan Kyun Chung and Keehoon Kim, "Training-free Bayesian self-adaptive classification for sEMG pattern recognition including motion transition," *IEEE Transactions on Biomedical Engineering* ([link](http://doi.org/10.1109/TBME.2019.2947089)).
+Seongsik Park, Wan Kyun Chung and Keehoon Kim, "Training-free Bayesian self-adaptive classification for sEMG pattern recognition including motion transition," *IEEE Transactions on Biomedical Engineering* ([DOI:10.1109/TBME.2019.2947089](http://doi.org/10.1109/TBME.2019.2947089)).
 
 ## Dependency
 
