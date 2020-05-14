@@ -7,10 +7,14 @@ Seongsik Park, Wan Kyun Chung and Keehoon Kim, "Training-free Bayesian self-adap
 
 ## Dependency
 
-* [Eigen](http://eigen.tuxfamily.org) to handle vectors and matrices
+### CUDA
+* [MATLAB C++ MEX API](https://www.mathworks.com/help/matlab/matlab_external/cpp-mex-api.html) to load a .mat file
+* [CUDA toolkit]
 
 ### Thalmic MYO armband
+* [Eigen](http://eigen.tuxfamily.org) to handle vectors and matrices
 * [Myo Windows SDK](https://support.getmyo.com/hc/en-us/articles/360018409792-Myo-Connect-SDK-and-firmware-downloads) to utilize sEMG inside MYO armband
 
 ### MATLAB mex function
+* [Eigen](http://eigen.tuxfamily.org) to handle vectors and matrices
 * [MATLAB C++ MEX API](https://www.mathworks.com/help/matlab/matlab_external/cpp-mex-api.html) to realize mex function for MATLAB
