@@ -10,7 +10,6 @@ Library, SDK or API that each example requires
 
 ### CUDA
 * [CUDA toolkit 10.2](https://developer.nvidia.com/cuda-toolkit) for GPU parallel process
-* [MATLAB C API to read MAT-File Data](https://www.mathworks.com/help/matlab/matlab-c-api-to-read-mat-file-data.html) to load a .mat file
 
 ### Thalmic MYO armband
 * [Eigen](http://eigen.tuxfamily.org) to handle vectors and matrices
