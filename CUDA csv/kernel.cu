@@ -6,7 +6,7 @@
 int main()
 {
     TFcore TF;
-    TF.loadData("data.mat");
+    TF.loadData("data.csv");
 
     while (!TF.isEmpty()) {
         TF.getSample();

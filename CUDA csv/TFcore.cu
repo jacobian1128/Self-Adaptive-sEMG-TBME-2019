@@ -185,9 +185,9 @@ void TFcore::computeDiffusion() {
 }
 
 void TFcore::loadData(string filename) {
-	string extension = filename.substr(0, filename.find_last_of(".") + 1);
+	string extension = filename.substr(filename.find_last_of(".") + 1);
 	printf("load %s with extension %s\n", filename.c_str(), extension.c_str());
-	if (strcmp(extension.c_str(), "mat")) {
+	if (!strcmp(extension.c_str(), "mat")) {
 		printf("load .mat file... ");
 		MATFile* pmat = matOpen(filename.c_str(), "r");
 
@@ -218,6 +218,38 @@ void TFcore::loadData(string filename) {
 
 		mxDestroyArray(mxdata);
 		matClose(pmat);
+	}
+	else if (!strcmp(extension.c_str(), "csv")) {
+		printf("load .csv file... ");
+
+		fstream file;
+		file.open(filename.c_str(), ios::in);
+
+		int m = 0;
+		int n = 0;
+
+		string data;
+		while (getline(file, data, '\n')) m++;
+
+		// move to beginning
+		file.clear();
+		file.seekg(0, ios::beg);
+
+		while (getline(file, data, ','))
+		{
+			dataStack.push_back(stod(data));
+		}
+
+		n = dataStack.size() / m;
+		printf("array size = %d x %d... ", m, n);
+		printf("done!\n");
+
+		printf("Memory allocation... ");
+		initModel(n);
+		setSample(m);
+		printf("done!\n");
+
+		file.close();
 	}
 }
 

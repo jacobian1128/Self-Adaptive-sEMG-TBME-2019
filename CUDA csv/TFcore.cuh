@@ -2,6 +2,7 @@
 #include <array>
 #include <iostream>
 #include <fstream>
+#include <istream>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
