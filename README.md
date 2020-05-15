@@ -8,8 +8,8 @@ Seongsik Park, Wan Kyun Chung and Keehoon Kim, "Training-free Bayesian self-adap
 ## Dependency
 
 ### CUDA
-* [MATLAB C++ MEX API](https://www.mathworks.com/help/matlab/matlab_external/cpp-mex-api.html) to load a .mat file
-* [CUDA toolkit]
+* [CUDA toolkit 10.2](https://developer.nvidia.com/cuda-toolkit) for GPU parallel process
+* [MATLAB C API to read MAT-File Data](https://www.mathworks.com/help/matlab/matlab-c-api-to-read-mat-file-data.html) to load a .mat file
 
 ### Thalmic MYO armband
 * [Eigen](http://eigen.tuxfamily.org) to handle vectors and matrices
