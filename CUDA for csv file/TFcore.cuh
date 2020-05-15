@@ -32,23 +32,23 @@ public:
 	int getSamples() { return numsample; };
 	int getPredict() { return mpred; };
 	int getPatterns() { return M; };
+	int getRemaining() { return (dataStack.size() / numch); };
 
 	bool isCollect() { return bCollect; };
 	bool isCompute() { return bCompute; };
 	bool isRegister() { return bRegister; };
-	bool isEmpty() { return (dataStack.size() == 0); };
 
 private:
 	int numch;
 	int numsample;
 
-	int reghold;
 	double xmax;
 
 	double alpha;
 	double beta;
 
-	double pstar;
+	double p_star;
+	double* p_lik;
 
 	double* mu_init;
 	double* sig2_init;
@@ -70,13 +70,13 @@ private:
 	int mpred;
 	int M;
 	int reglast;
-	double pmax;
+	int reghold;
+	double p_max;
 
 	double* xbin;
 	double* xnew;
 	int* idnew;
 
-	double* emgRaw;
 	double* emgMAV;
 	double* emgStack;
 
@@ -93,13 +93,14 @@ private:
 private:
 	int tableSize;
 	int discretizeStep;
-	void computeNormal(double mu, double sig2, double* p);
+
+	void registerPattern(double* mu, double* sig2, double* p);
 	void computeNormal(double* mu, double* sig2, double* p);
 	void normalizeProb(double* p);
 	void computeDiffusion();
 
-	void constructLookup();
 	double* normalTable;
+	void constructLookup();
 
 private:
 	void setVal(double* vector, double val);

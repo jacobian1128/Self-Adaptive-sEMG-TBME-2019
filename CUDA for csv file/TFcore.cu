@@ -20,8 +20,32 @@ __global__ void computeProduct(double* pdist_prior, double* pdist_lik, double* p
 	pdist_post[i] = pdist_prior[i] * pdist_lik[i];
 }
 
+__global__ void computeLikelihood(double* mu, double* sig2, double* lookup, double discretizeStep, double tableSize, double* pdist_lik) {
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	int n = blockIdx.x;
+	int k = threadIdx.x;
+
+	double Z = 0;
+	double p0 = 0;
+
+	int id = 0;
+
+	Z = (k / (double)XRES)- mu[n];
+	Z = discretizeStep * Z * (1 / sqrt(sig2[n]));
+
+	id = floor(abs(Z));
+	if (id < tableSize) {
+		p0 = lookup[id];
+	}
+	else {
+		p0 = EPSILON;
+	}	
+	
+	pdist_lik[i] = p0;
+}
+
 TFcore::TFcore() {
-	M = 1;
+	M = 2000;
 	reglast = 0;
 
 	bCollect = false;
@@ -39,7 +63,6 @@ TFcore::~TFcore() {
 	free(xnew);
 	free(idnew);
 
-	free(emgRaw);
 	free(emgMAV);
 	free(emgStack);
 
@@ -61,25 +84,27 @@ void TFcore::initModel(int n) {
 
 	xbin = (double*)malloc(XRES * sizeof(double));
 	for (int i = 0; i < XRES; i++) {
-		xbin[i] = (i / (double)(XRES));
+		xbin[i] = ((i + 1) / (double)(XRES));
 	}
 
-	emgRaw   = (double*)malloc(numch * sizeof(double));
 	emgMAV   = (double*)malloc(numch * sizeof(double));
-	emgStack = (double*)malloc((int)(WIN_MAV) * numch * sizeof(double));
+	//emgStack = (double*)malloc((int)WIN_MAV * numch * sizeof(double));
+	emgStack = (double*)calloc(WIN_MAV * numch, sizeof(double));
 
 	xnew = (double*)malloc(numch * sizeof(double));
 	idnew = (int*)malloc(numch * sizeof(int));
 
-	tableSize = 500;
-	discretizeStep = 100;
+	tableSize = 5000;
+	discretizeStep = 1000;
 	normalTable = (double*)malloc(tableSize * sizeof(double));
 
 	// distribution = max number of patterns
-	// realloc vs. malloc?
-	pdist_prior = (double*)malloc(XRES * numch * M_MAX);
-	pdist_post  = (double*)malloc(XRES * numch * M_MAX);
-	pdist_lik   = (double*)malloc(XRES * numch * M_MAX);
+	// calloc vs. malloc?
+	pdist_prior = (double*)malloc(XRES * numch * M_MAX * sizeof(double));
+	pdist_post  = (double*)malloc(XRES * numch * M_MAX * sizeof(double));
+	pdist_lik   = (double*)malloc(XRES * numch * M_MAX * sizeof(double));
+
+	p_lik = (double*)malloc(M_MAX * sizeof(double));
 
 	// model parameter
 	xmax = 2.00e-4;
@@ -87,7 +112,7 @@ void TFcore::initModel(int n) {
 	alpha = 1.00e-5;
 	beta = 1.00e-10;
 
-	pstar = 1e-17;
+	p_star = 1e-17;
 
 	reghold = 512;
 
@@ -96,11 +121,10 @@ void TFcore::initModel(int n) {
 	setVal(sig2_reg, 1.00e-2);
 	setVal(sig2_update, 1.00e+2);
 
-	setZero(emgRaw);
 	setZero(emgMAV);
 
 	constructLookup();
-
+	printf("initModel done");
 }
 
 void TFcore::getSample() {
@@ -126,12 +150,13 @@ void TFcore::getSample() {
 }
 
 void TFcore::proceed() {
-	if (isCollect()) {
+	if (1) {
+	//if (isCollect()) {
 		bRegister = false;
 
 		reglast += 1;
 
-		pmax = -1;
+		p_max = -1;
 		mpred = 0;
 
 		for (int n = 0; n < numch; n++) {
@@ -141,27 +166,66 @@ void TFcore::proceed() {
 			if (idnew[n] > (XRES - 1)) idnew[n] = XRES - 1;
 		}
 
+		printf("diffusion >> ");
 		computeDiffusion();
-		computeNormal(xnew, sig2_update, pdist_lik);
+		printf("likelihood >> ");
+		//computeNormal(xnew, sig2_update, pdist_lik);
+		computeLikelihood <<< numch, XRES >>> (xnew, sig2_update, normalTable, discretizeStep, tableSize, pdist_lik);
+		for (int m = 1; m < M; m++) memcpy(&pdist_lik[m], &pdist_lik[0], (int)XRES * numch * sizeof(double));
 
-		computeProduct<<< XRES, numch * M >>>(pdist_prior, pdist_lik, pdist_post);
+		printf("posterior >> ");
+		computeProduct <<< XRES, numch * M >>> (pdist_prior, pdist_lik, pdist_post);
+		normalizeProb(pdist_post);
+
+		printf("prediction >> ");
+		for (int m = 0; m < M; m++) {
+			p_lik[m] = 1;
+			for (int n = 0; n < numch; n++) {
+				p_lik[m] *= pdist_post[idnew[n] + n * numch + m * numch * XRES];
+			}
+			if (p_lik[m] < 1e-99) p_lik[m] = 1e-99;
+
+			// MLE prediction
+			if (p_lik[m] > p_max) {
+				p_max = p_lik[m];
+				mpred = m;
+			}
+		}
+
+
+		// registration
+		if ((p_max < p_star) && (reglast > reghold)) {
+			registerPattern(xnew, sig2_reg, &pdist_post[M * numch * XRES]);
+			pdist_post[M] = pdist_prior[M];
+			p_lik[M] = 1;
+			for (int n = 0; n < numch; n++) {
+				p_lik[M] *= pdist_post[idnew[n] + n * numch + M * numch * XRES];
+			}
+
+			mpred = M;
+			M += 1;
+			reglast = 0;
+
+			bRegister = true;
+		}
 
 		bCollect = false;
 		bCompute = true;
 	}
 	else {
-		return;
+		//return;
 	}
 }
 
 void TFcore::computeDiffusion() {
 	// XRES X NUMCH X M
-	double* pshift = (double*)malloc(_msize(pdist_prior) * sizeof(double));
-	double* dpshift = (double*)malloc(_msize(pdist_prior) * sizeof(double));
+	double* pshift = (double*)malloc(XRES * numch * M * sizeof(double));
+	double* dpshift = (double*)malloc(XRES * numch * M * sizeof(double));
 
-	double* dp = (double*)malloc(_msize(pdist_prior) * sizeof(double));
-	double* ddp = (double*)malloc(_msize(pdist_prior) * sizeof(double));
+	double* dp = (double*)malloc(XRES * numch * M * sizeof(double));
+	double* ddp = (double*)malloc(XRES * numch * M * sizeof(double));
 	
+	// memcpy pdist_prior => pshift(dist_prior)
 	for (int m = 0; m < M; m++) {
 		for (int n = 0; n < numch; n++) {
 			pshift[0 + n * XRES + m * (XRES * numch)] = pshift[1 + n * XRES + m * (XRES * numch)];
@@ -170,8 +234,10 @@ void TFcore::computeDiffusion() {
 				(XRES - 1) * sizeof(double));
 		}
 	}
-	computeGradient <<< XRES, numch * M >>> (pdist_prior, pshift, dp, (1 / (double)(XRES)));
+	// compute (p, pshift) => dp
+	computeGradient <<< 1, XRES * numch * M >>> (pdist_prior, pshift, dp, (1 / (double)(XRES)));
 
+	// memcpy dp(dist_prior) => dpshift(dist_prior)
 	for (int m = 0; m < M; m++) {
 		for (int n = 0; n < numch; n++) {
 			dpshift[0 + n * XRES + m * (XRES * numch)] = dpshift[1 + n * XRES + m * (XRES * numch)];
@@ -180,8 +246,12 @@ void TFcore::computeDiffusion() {
 				(XRES - 1) * sizeof(double));
 		}
 	}
-	computeGradient <<< XRES, numch * M >>> (dp, dpshift, ddp, (1 / (double)(XRES)));
-	computeWeightedSum <<< XRES, numch * M >>> (pdist_prior, ddp, alpha, beta);
+
+	// compute (dp, dpshift) => ddp
+	computeGradient <<< 1, XRES* numch* M >>> (dp, dpshift, ddp, (1 / (double)(XRES)));
+	computeWeightedSum <<< 1, XRES * numch * M >>> (pdist_prior, ddp, alpha, beta);
+
+	normalizeProb(pdist_prior);
 }
 
 void TFcore::loadData(string filename) {
@@ -253,59 +323,64 @@ void TFcore::loadData(string filename) {
 	}
 }
 
-void TFcore::computeNormal(double mu, double sig2, double* p) {
-	if (_msize(p) == XRES) {
-		double Z[XRES];
-		
-		for (int i = 0; i < XRES; i++) {
-			Z[i] = xbin[i] - mu;
-			Z[i] = discretizeStep * Z[i] * (1 / sqrt(sig2));
-		}
-		for (int i = 0; i < XRES; i++) {
-			int id = floor(abs(Z[i]));
-			if (id < tableSize)
-				p[i] = normalTable[id];
-			else
-				p[i] = EPSILON;
-		}
+void TFcore::registerPattern(double* mu, double* sig2, double* p) {
+	double* Z = (double*)malloc((int)XRES * numch * sizeof(double));
+	for (int n = 0; n < numch; n++) {
+		for (int m = 0; m < XRES; m++) {
+			Z[m + n * XRES] = xbin[m] - mu[n];
+			Z[m + n * XRES] = discretizeStep * Z[m + n * XRES] * (1 / sqrt(sig2[n]));
 
-		normalizeProb(p);
+			int id = floor(abs(Z[m + n * XRES]));
+			if (id < tableSize)
+				p[m + n * XRES] = normalTable[id];
+			else
+				p[m + n * XRES] = EPSILON;
+		}
 	}
-	else {
-		printf("[error] sizeof @ computeNormal\n");
-		return;
-	}
+
+	// normalize (XRES X numch)
+	normalizeProb(p);
 }
 
 void TFcore::computeNormal(double* mu, double* sig2, double* p) {
-	double* Z = (double*)malloc((int)(XRES) * numch * sizeof(double));
-	double* p0 = (double*)malloc((int)(XRES) * numch * sizeof(double));
-	if (_msize(p0) == (int)(XRES) * numch) {
+	double* Z = (double*)malloc(XRES * numch * sizeof(double));
+	double* p0 = (double*)malloc(XRES * numch * sizeof(double));
+	
+	int id = 0;
+	
+	//if (_msize(p0) == (int)(XRES) * numch) {
+	if (1) {
 		for (int n = 0; n < numch; n++) {
-			for (int m = 0; m < XRES; m++) {
-				Z[m + n * XRES] = xbin[m] - mu[n];
-				Z[m + n * XRES] = discretizeStep * Z[m + n * XRES] *(1 / sqrt(sig2[n]));
+			for (int k = 0; k < XRES; k++) {
+				Z[k + n * XRES] = xbin[k] - mu[n];
+				Z[k + n * XRES] = discretizeStep * Z[k + n * XRES] *(1 / sqrt(sig2[n]));
 
-				int id = floor(abs(Z[m + n * XRES]));
-				if (id < tableSize)
-					p0[m + n * XRES] = normalTable[id];
-				else
-					p0[m + n * XRES] = EPSILON;
+				id = floor(abs(Z[k + n * XRES]));
+				if (id < tableSize) {
+					p0[k + n * XRES] = normalTable[id];
+				}
+				else {
+					p0[k + n * XRES] = EPSILON;
+				}
 			}
 		}
 
 		// normalize (XRES X numch)
-		normalizeProb(p0);
+		//normalizeProb(p0);
 
+		printf("memcpy >> ");
 		// memcpy to (XRES X numch X M)
 		for (int m = 0; m < M; m++) {
-			memcpy(&p[m], &p0[0], (int)(XRES)*numch * sizeof(double));
+			memcpy(&p[m], &p0[0], (int)XRES * numch * sizeof(double));
 		}
 	}
 	else {
 		printf("[error] sizeof @ computeNormal\n");
-		return;
+		//return;
 	}
+
+	free(Z);
+	free(p0);
 }
 
 void TFcore::normalizeProb(double* p) {
@@ -314,17 +389,30 @@ void TFcore::normalizeProb(double* p) {
 		for (int i = 0; i < XRES; i++) psum += p[i];
 		for (int i = 0; i < XRES; i++) p[i] /= psum;
 	}
-	else if (_msize(p) == (int)(XRES) * numch) {
+	else if (_msize(p) == (int)XRES * numch) {
 		for (int n = 0; n < numch; n++) {
 			double psum = 0;
 			for (int m = 0; m < XRES; m++) psum += p[m + n * XRES];
 			for (int m = 0; m < XRES; m++) p[m + n * XRES] /= psum;
 		}
 	}
+	else if (_msize(p) == (int)XRES * numch * M_MAX) {
+		for (int m = 0; m < M; m++) {
+			for (int n = 0; n < numch; n++) {
+				double psum = 0;
+				for (int k = 0; k < XRES; k++) {
+					psum += p[k + n * XRES + numch * XRES * m];
+				}
+				for (int k = 0; k < XRES; k++) {
+					p[k + n * XRES + numch * XRES * m] /= psum;
+				}
+			}
+		}
+	}
 }
 
 void TFcore::constructLookup() {
-	for (int i = 0; i < _msize(normalTable); i++) {
+	for (int i = 0; i < tableSize; i++) {
 		normalTable[i] = (1 / sqrt(2 * M_PI)) * exp(-0.5 * ((double)i / discretizeStep) * ((double)i / discretizeStep));
 	}
 }
