@@ -11,8 +11,8 @@
 #include <list>
 #include <string>
 
-#define WIN_MAV 256	// the number of MAV samples 
-#define XRES 128	// resolution of discretizing probability distribution 
+#define WIN_MAV 2	// the number of MAV samples 
+#define XRES 512	// resolution of discretizing probability distribution 
 #define EPSILON 1.00e-10
 #define M_MAX 2048
 
@@ -35,7 +35,7 @@ public:
 	int getRemaining() { return (dataStack.size() / numch); };
 
 	bool isCollect() { return bCollect; };
-	bool isCompute() { return bCompute; };
+	bool isCompute() { return bCompute; }; 
 	bool isRegister() { return bRegister; };
 
 private:
@@ -95,8 +95,6 @@ private:
 	int discretizeStep;
 
 	void registerPattern(double* mu, double* sig2, double* p);
-	void computeNormal(double* mu, double* sig2, double* p);
-	void normalizeProb(double* p);
 	void computeDiffusion();
 
 	double* normalTable;

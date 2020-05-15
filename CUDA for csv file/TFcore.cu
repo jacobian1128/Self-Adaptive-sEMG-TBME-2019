@@ -1,5 +1,3 @@
-#include <mat.h> // for MATLAB .mat file
-
 #include "TFcore.cuh"
 
 #include "cuda_runtime.h"
@@ -44,8 +42,18 @@ __global__ void computeLikelihood(double* mu, double* sig2, double* lookup, doub
 	pdist_lik[i] = p0;
 }
 
+__global__ void normalizeProb(double* pdist) {
+	int numch = blockDim.x;
+	int m = blockIdx.x;
+	int n = threadIdx.x;
+
+	double psum = 0;
+	for (int k = 0; k < XRES; k++) psum += pdist[m * XRES * numch + n * XRES];
+	for (int k = 0; k < XRES; k++) pdist[m * XRES * numch + n * XRES] /= psum;
+}
+
 TFcore::TFcore() {
-	M = 2000;
+	M = 1;
 	reglast = 0;
 
 	bCollect = false;
@@ -88,7 +96,6 @@ void TFcore::initModel(int n) {
 	}
 
 	emgMAV   = (double*)malloc(numch * sizeof(double));
-	//emgStack = (double*)malloc((int)WIN_MAV * numch * sizeof(double));
 	emgStack = (double*)calloc(WIN_MAV * numch, sizeof(double));
 
 	xnew = (double*)malloc(numch * sizeof(double));
@@ -107,14 +114,14 @@ void TFcore::initModel(int n) {
 	p_lik = (double*)malloc(M_MAX * sizeof(double));
 
 	// model parameter
-	xmax = 2.00e-4;
+	xmax = 5.00e+0;
 
 	alpha = 1.00e-5;
 	beta = 1.00e-10;
 
 	p_star = 1e-17;
 
-	reghold = 512;
+	reghold = 64;
 
 	setVal(mu_init, 1.00e-2);
 	setVal(sig2_init, 1.00e-3);
@@ -169,13 +176,12 @@ void TFcore::proceed() {
 		printf("diffusion >> ");
 		computeDiffusion();
 		printf("likelihood >> ");
-		//computeNormal(xnew, sig2_update, pdist_lik);
 		computeLikelihood <<< numch, XRES >>> (xnew, sig2_update, normalTable, discretizeStep, tableSize, pdist_lik);
 		for (int m = 1; m < M; m++) memcpy(&pdist_lik[m], &pdist_lik[0], (int)XRES * numch * sizeof(double));
 
 		printf("posterior >> ");
 		computeProduct <<< XRES, numch * M >>> (pdist_prior, pdist_lik, pdist_post);
-		normalizeProb(pdist_post);
+		normalizeProb <<< M, XRES >>> (pdist_post);
 
 		printf("prediction >> ");
 		for (int m = 0; m < M; m++) {
@@ -235,7 +241,7 @@ void TFcore::computeDiffusion() {
 		}
 	}
 	// compute (p, pshift) => dp
-	computeGradient <<< 1, XRES * numch * M >>> (pdist_prior, pshift, dp, (1 / (double)(XRES)));
+	computeGradient <<< XRES, numch * M >>> (pdist_prior, pshift, dp, (1 / (double)(XRES)));
 
 	// memcpy dp(dist_prior) => dpshift(dist_prior)
 	for (int m = 0; m < M; m++) {
@@ -248,48 +254,48 @@ void TFcore::computeDiffusion() {
 	}
 
 	// compute (dp, dpshift) => ddp
-	computeGradient <<< 1, XRES* numch* M >>> (dp, dpshift, ddp, (1 / (double)(XRES)));
-	computeWeightedSum <<< 1, XRES * numch * M >>> (pdist_prior, ddp, alpha, beta);
+	computeGradient <<< XRES, numch* M >>> (dp, dpshift, ddp, (1 / (double)(XRES)));
+	computeWeightedSum <<< XRES, numch * M >>> (pdist_prior, ddp, alpha, beta);
 
-	normalizeProb(pdist_prior);
+	normalizeProb <<< M, XRES >>> (pdist_prior);
 }
 
 void TFcore::loadData(string filename) {
 	string extension = filename.substr(filename.find_last_of(".") + 1);
 	printf("load %s with extension %s\n", filename.c_str(), extension.c_str());
-	if (!strcmp(extension.c_str(), "mat")) {
-		printf("load .mat file... ");
-		MATFile* pmat = matOpen(filename.c_str(), "r");
+	//if (!strcmp(extension.c_str(), "mat")) {
+	//	printf("load .mat file... ");
+	//	MATFile* pmat = matOpen(filename.c_str(), "r");
 
-		if (pmat == NULL) {
-			printf("Error opening file %s\n", filename.c_str());
-			return;
-		}
+	//	if (pmat == NULL) {
+	//		printf("Error opening file %s\n", filename.c_str());
+	//		return;
+	//	}
 
-		mxArray* mxdata = matGetVariable(pmat, "emg");
+	//	mxArray* mxdata = matGetVariable(pmat, "emg");
 
-		int m, n;
-		m = mxGetM(mxdata);
-		n = mxGetN(mxdata);
+	//	int m, n;
+	//	m = mxGetM(mxdata);
+	//	n = mxGetN(mxdata);
 
-		printf("array size = %d x %d... ", m, n);
+	//	printf("array size = %d x %d... ", m, n);
 
-		double* data = mxGetPr(mxdata);
+	//	double* data = mxGetPr(mxdata);
 
-		for (int i = 0; i < m * n; i++) {
-			dataStack.push_back(data[i]);
-		}
-		printf("done!\n");
+	//	for (int i = 0; i < m * n; i++) {
+	//		dataStack.push_back(data[i]);
+	//	}
+	//	printf("done!\n");
 
-		printf("Memory allocation... ");
-		initModel(n);
-		setSample(m);
-		printf("done!\n");
+	//	printf("Memory allocation... ");
+	//	initModel(n);
+	//	setSample(m);
+	//	printf("done!\n");
 
-		mxDestroyArray(mxdata);
-		matClose(pmat);
-	}
-	else if (!strcmp(extension.c_str(), "csv")) {
+	//	mxDestroyArray(mxdata);
+	//	matClose(pmat);
+	//}
+	if (!strcmp(extension.c_str(), "csv")) {
 		printf("load .csv file... ");
 
 		fstream file;
@@ -326,89 +332,26 @@ void TFcore::loadData(string filename) {
 void TFcore::registerPattern(double* mu, double* sig2, double* p) {
 	double* Z = (double*)malloc((int)XRES * numch * sizeof(double));
 	for (int n = 0; n < numch; n++) {
-		for (int m = 0; m < XRES; m++) {
-			Z[m + n * XRES] = xbin[m] - mu[n];
-			Z[m + n * XRES] = discretizeStep * Z[m + n * XRES] * (1 / sqrt(sig2[n]));
+		for (int k = 0; k < XRES; k++) {
+			Z[k + n * XRES] = xbin[k] - mu[n];
+			Z[k + n * XRES] = discretizeStep * Z[k + n * XRES] * (1 / sqrt(sig2[n]));
 
-			int id = floor(abs(Z[m + n * XRES]));
+			int id = floor(abs(Z[k + n * XRES]));
 			if (id < tableSize)
-				p[m + n * XRES] = normalTable[id];
+				p[k + n * XRES] = normalTable[id];
 			else
-				p[m + n * XRES] = EPSILON;
+				p[k + n * XRES] = EPSILON;
 		}
 	}
 
-	// normalize (XRES X numch)
-	normalizeProb(p);
-}
-
-void TFcore::computeNormal(double* mu, double* sig2, double* p) {
-	double* Z = (double*)malloc(XRES * numch * sizeof(double));
-	double* p0 = (double*)malloc(XRES * numch * sizeof(double));
-	
-	int id = 0;
-	
-	//if (_msize(p0) == (int)(XRES) * numch) {
-	if (1) {
-		for (int n = 0; n < numch; n++) {
-			for (int k = 0; k < XRES; k++) {
-				Z[k + n * XRES] = xbin[k] - mu[n];
-				Z[k + n * XRES] = discretizeStep * Z[k + n * XRES] *(1 / sqrt(sig2[n]));
-
-				id = floor(abs(Z[k + n * XRES]));
-				if (id < tableSize) {
-					p0[k + n * XRES] = normalTable[id];
-				}
-				else {
-					p0[k + n * XRES] = EPSILON;
-				}
-			}
-		}
-
-		// normalize (XRES X numch)
-		//normalizeProb(p0);
-
-		printf("memcpy >> ");
-		// memcpy to (XRES X numch X M)
-		for (int m = 0; m < M; m++) {
-			memcpy(&p[m], &p0[0], (int)XRES * numch * sizeof(double));
-		}
-	}
-	else {
-		printf("[error] sizeof @ computeNormal\n");
-		//return;
+	double psum;
+	for (int n = 0; n < numch; n++) {
+		psum = 0;
+		for (int k = 0; k < XRES; k++) psum += p[k + n * XRES];
+		for (int k = 0; k < XRES; k++) p[k + n * XRES] /= psum;
 	}
 
 	free(Z);
-	free(p0);
-}
-
-void TFcore::normalizeProb(double* p) {
-	if (_msize(p) == XRES) {
-		double psum = 0;
-		for (int i = 0; i < XRES; i++) psum += p[i];
-		for (int i = 0; i < XRES; i++) p[i] /= psum;
-	}
-	else if (_msize(p) == (int)XRES * numch) {
-		for (int n = 0; n < numch; n++) {
-			double psum = 0;
-			for (int m = 0; m < XRES; m++) psum += p[m + n * XRES];
-			for (int m = 0; m < XRES; m++) p[m + n * XRES] /= psum;
-		}
-	}
-	else if (_msize(p) == (int)XRES * numch * M_MAX) {
-		for (int m = 0; m < M; m++) {
-			for (int n = 0; n < numch; n++) {
-				double psum = 0;
-				for (int k = 0; k < XRES; k++) {
-					psum += p[k + n * XRES + numch * XRES * m];
-				}
-				for (int k = 0; k < XRES; k++) {
-					p[k + n * XRES + numch * XRES * m] /= psum;
-				}
-			}
-		}
-	}
 }
 
 void TFcore::constructLookup() {

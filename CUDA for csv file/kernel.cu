@@ -14,10 +14,8 @@ int main()
         printf("process %5.2f [%%]: M %d ",
             100 * (1 - TF.getRemaining() / (double)TF.getSamples()), TF.getPatterns());
 
-        printf("getSample >> ");
         TF.getSample();
 
-        printf("proceed >> ");
         TF.proceed();
         printf("\n");
     }
