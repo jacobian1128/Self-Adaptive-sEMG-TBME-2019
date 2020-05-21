@@ -10,7 +10,7 @@ Library, SDK or API that each example requires
 
 ### CUDA and MFC
 * [CUDA toolkit 10.2](https://developer.nvidia.com/cuda-toolkit) for GPU parallel process
-* [VTK 8.2.0](https://vtk.org/) for visualization
+* [VTK 9.0.0](https://vtk.org/) for visualization
 
 ### Thalmic MYO armband
 * [Eigen](http://eigen.tuxfamily.org) to handle vectors and matrices
