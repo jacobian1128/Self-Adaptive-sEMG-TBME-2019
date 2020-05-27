@@ -8,8 +8,9 @@ Seongsik Park, Wan Kyun Chung and Keehoon Kim, "Training-free Bayesian self-adap
 ## Dependency
 Library, SDK or API that each example requires
 
-### CUDA
+### CUDA and MFC
 * [CUDA toolkit 10.2](https://developer.nvidia.com/cuda-toolkit) for GPU parallel process
+* [VTK 9.0.0](https://vtk.org/) for visualization built by VS2019
 
 ### Thalmic MYO armband
 * [Eigen](http://eigen.tuxfamily.org) to handle vectors and matrices
