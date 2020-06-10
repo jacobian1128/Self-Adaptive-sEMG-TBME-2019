@@ -65,7 +65,6 @@ public:
 	void LogPrintf(const char* fmt, ...);
 
 public:
-	afx_msg void OnBnClickedInit();
 	afx_msg void OnBnClickedLoad();
 
 public:
@@ -76,6 +75,8 @@ public:
 	afx_msg void OnBnClickedVtk();
 	afx_msg void OnBnClickedProduct();
 	CButton mGPU_product;
+	afx_msg void OnBnClickedProcess();
+	afx_msg void OnBnClickedInit();
 };
 
 #endif

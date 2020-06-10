@@ -49,7 +49,7 @@ END_MESSAGE_MAP()
 // CTFcoreMFCDlg 대화 상자
 
 CTFcoreMFCDlg::CTFcoreMFCDlg(CWnd* pParent /*=nullptr*/)
-	: CDialogEx(IDD_TFCOREMFC_DIALOG, pParent), TF(*this)
+	: CDialogEx(IDD_TFCOREMFC_DIALOG, pParent), TF()
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -57,17 +57,18 @@ CTFcoreMFCDlg::CTFcoreMFCDlg(CWnd* pParent /*=nullptr*/)
 void CTFcoreMFCDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
-	DDX_Control(pDX, IDC_PRODUCT, mGPU_product);
+	DDX_Control(pDX, IDC_GPU_PRODUCT, mGPU_product);
 }
 
 BEGIN_MESSAGE_MAP(CTFcoreMFCDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-	ON_BN_CLICKED(IDC_INIT, &CTFcoreMFCDlg::OnBnClickedInit)
 	ON_BN_CLICKED(IDC_LOAD, &CTFcoreMFCDlg::OnBnClickedLoad)
 	ON_BN_CLICKED(IDC_VTK, &CTFcoreMFCDlg::OnBnClickedVtk)
-	ON_BN_CLICKED(IDC_PRODUCT, &CTFcoreMFCDlg::OnBnClickedProduct)
+	ON_BN_CLICKED(IDC_GPU_PRODUCT, &CTFcoreMFCDlg::OnBnClickedProduct)
+	ON_BN_CLICKED(IDC_PROCESS, &CTFcoreMFCDlg::OnBnClickedProcess)
+	ON_BN_CLICKED(IDC_INIT, &CTFcoreMFCDlg::OnBnClickedInit)
 END_MESSAGE_MAP()
 
 
@@ -108,10 +109,6 @@ BOOL CTFcoreMFCDlg::OnInitDialog()
 
 	//mGPU_product.SetCheck(true);
 	//OnBnClickedProduct();
-
-	TF.loadData("data.csv");
-	OnBnClickedInit();
-
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -167,7 +164,7 @@ HCURSOR CTFcoreMFCDlg::OnQueryDragIcon()
 
 
 
-void CTFcoreMFCDlg::OnBnClickedInit()
+void CTFcoreMFCDlg::OnBnClickedProcess()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 
@@ -184,7 +181,8 @@ void CTFcoreMFCDlg::OnBnClickedLoad()
 	CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY, szFilter);
 
 	if (IDOK == dlg.DoModal())	{
-		fileName = dlg.GetFileName();
+		fileName = dlg.GetPathName();
+		//fileName = dlg.GetFileName();
 	//	MessageBox(fileName);
 	}
 
@@ -192,7 +190,6 @@ void CTFcoreMFCDlg::OnBnClickedLoad()
 	CT2CA pszConvertedAnsiString(fileName);
 	string str(pszConvertedAnsiString);
 	
-
 	TF.loadData(str);
 
 	LogPrintf("Load data file %s", str.c_str());
@@ -207,7 +204,7 @@ UINT CTFcoreMFCDlg::ThreadWorker(LPVOID pParam)
 	startTime = clock();
 	self->LogPrintf("Begin process...");
 	if (self->TF.isGPU_Product()) self->LogPrintf("GPU::Product enabled");
-	while (self->TF.getRemaining() > 0) {
+	while (self->TF.getNumRemaining() > 0) {
 		self->TF.getSample();
 		self->TF.proceedIteration();
 		self->TF.writeResult();
@@ -346,3 +343,12 @@ void CTFcoreMFCDlg::OnBnClickedProduct()
 	if (mGPU_product.GetCheck()) TF.enableGPU_Product();
 	else						 TF.disableGPU_Product();
 }
+
+
+void CTFcoreMFCDlg::OnBnClickedInit()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	if (TF.getNumChannels() != 0) TF.resetModel();
+	else LogPrintf("numChannels not set");
+}
+
